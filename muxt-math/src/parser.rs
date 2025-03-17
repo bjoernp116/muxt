@@ -24,31 +24,8 @@ pub enum Operator {
     Plus,
     Minus,
     Div,
-    Mult
-}
-
-impl Operator {
-    fn precedence(&self) -> u8 {
-        use Operator::*;
-        match &self {
-            Plus => 1,
-            Minus => 1,
-            Div => 2,
-            Mult => 2,
-        }
-    }
-}
-
-impl PartialEq<Operator> for Operator {
-    fn eq(&self, other: &Operator) -> bool {
-        self.precedence() == other.precedence()
-    }
-}
-
-impl PartialOrd for Operator {
-    fn partial_cmp(&self, other: &Operator) -> Option<std::cmp::Ordering> {
-        u8::partial_cmp(&self.precedence(), &other.precedence())
-    }
+    Mult,
+    Pow
 }
 
 pub struct AstFactory {
@@ -79,10 +56,30 @@ impl AstFactory {
 
     fn parse_factor(&mut self) -> Result<Node> {
         println!("parse_factor: {}", self.tokens[self.current].symbol);
-        let mut node: Node = self.parse_primary()?;
+        let mut node: Node = self.parse_exponent()?;
         while self.current < self.tokens.len() {
             match self.tokens[self.current].symbol {
                 LexicalSymbol::Mult | LexicalSymbol::Div => {
+                    let op = self.tokens[self.current].symbol.clone();
+                    self.current += 1; // Increment here after capturing the operator
+                    if self.current >= self.tokens.len() {
+                        break;
+                    }
+                    let right = Box::new(self.parse_exponent()?);
+                    node = Node::Binary { left: Box::new(node), operator: to_operator(op), right };
+                }
+                _ => break
+            }
+        }
+        Ok(node)
+    }
+
+    fn parse_exponent(&mut self) -> Result<Node> {
+        println!("parse_exponent: {}", self.tokens[self.current].symbol);
+        let mut node: Node = self.parse_primary()?;
+        while self.current < self.tokens.len() {
+            match self.tokens[self.current].symbol {
+                LexicalSymbol::Pow => {
                     let op = self.tokens[self.current].symbol.clone();
                     self.current += 1; // Increment here after capturing the operator
                     if self.current >= self.tokens.len() {
@@ -162,6 +159,7 @@ fn to_operator(symbol: LexicalSymbol) -> Operator {
         LexicalSymbol::Minus => Operator::Minus,
         LexicalSymbol::Div => Operator::Div,
         LexicalSymbol::Mult => Operator::Mult,
+        LexicalSymbol::Pow => Operator::Pow,
         _ => todo!()
     }
 }

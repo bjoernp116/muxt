@@ -8,6 +8,7 @@ pub enum LexicalSymbol {
     Minus,
     Div,
     Mult,
+    Pow,
     Eqal,
     Number(usize),
     OpenParen,
@@ -47,6 +48,7 @@ pub fn analyze(input: String) -> anyhow::Result<LexicalSequence>{
                 '*' => LexicalSymbol::Mult,
                 '(' => LexicalSymbol::OpenParen,
                 ')' => LexicalSymbol::CloseParen,
+                '^' => LexicalSymbol::Pow,
                 '=' => LexicalSymbol::Eqal,
                 ' ' => continue,
                 x if x.is_alphabetic() => LexicalSymbol::Varible(x),
@@ -71,6 +73,16 @@ pub fn analyze(input: String) -> anyhow::Result<LexicalSequence>{
         buffer.clear();
     }
 
+    /*for i in 0..(out.len() - 1) {
+        if !out[i].symbol.is_operator() && !out[i+1].symbol.is_operator() {
+            println!("implicit mult");
+            out.insert(i, LexicalExpression {
+                symbol: LexicalSymbol::Mult,
+                pos: i,
+            });
+        }
+    }*/
+
     Ok(LexicalSequence(out))
 }
 
@@ -87,8 +99,19 @@ impl std::fmt::Display for LexicalSymbol {
             OpenParen => write!(f, "(")?,
             CloseParen => write!(f, ")")?,
             Eqal => write!(f, "=")?,
+            Pow => write!(f, "^")?,
         };
         Ok(())
+    }
+}
+
+impl LexicalSymbol {
+    fn is_operator(&self) -> bool {
+        use LexicalSymbol::*;
+        match self {
+            Plus | Minus | Div | Mult | Pow => true,
+            _ => false
+        }
     }
 }
 

@@ -22,7 +22,7 @@ mod tests {
 
     #[test]
     fn ast() {
-        let input = String::from("3 + 5 * (4 + 2) * 3");
+        let input = String::from("3 ^ 2 + 5 * (4 + 2) * 3");
         let result: LexicalSequence = lexer::analyze(input).unwrap();
 
         println!("Lexer output: {:#?}", result);
