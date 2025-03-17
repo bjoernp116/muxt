@@ -54,7 +54,6 @@ impl PartialOrd for Operator {
 pub struct AstFactory {
     tokens: VecDeque<LexicalExpression>,
     current: usize,
-
 }
 
 impl AstFactory {
@@ -64,12 +63,15 @@ impl AstFactory {
         while self.current < self.tokens.len() {
             match self.tokens[self.current].symbol {
                 LexicalSymbol::Plus | LexicalSymbol::Minus => {
-                    self.current += 1;
                     let op = self.tokens[self.current].symbol.clone();
+                    self.current += 1; // Increment here after capturing the operator
+                    if self.current >= self.tokens.len() {
+                        break;
+                    }
                     let right = Box::new(self.parse_factor()?);
                     node = Node::Binary { left: Box::new(node), operator: to_operator(op), right };
                 }
-                _ => ()
+                _ => break
             }
         }
         Ok(node)
@@ -81,16 +83,20 @@ impl AstFactory {
         while self.current < self.tokens.len() {
             match self.tokens[self.current].symbol {
                 LexicalSymbol::Mult | LexicalSymbol::Div => {
-                    self.current += 1;
                     let op = self.tokens[self.current].symbol.clone();
+                    self.current += 1; // Increment here after capturing the operator
+                    if self.current >= self.tokens.len() {
+                        break;
+                    }
                     let right = Box::new(self.parse_paren()?);
                     node = Node::Binary { left: Box::new(node), operator: to_operator(op), right };
                 }
-                _ => ()
+                _ => break
             }
         }
         Ok(node)
     }
+
     fn parse_paren(&mut self) -> Result<Node> {
         println!("parse_paren: {}", self.tokens[self.current].symbol);
         let mut open_p = 0;
@@ -115,21 +121,25 @@ impl AstFactory {
             private_tokens.push_back(self.tokens[self.current].clone());
             self.current += 1;
         }
+        if open_p != 0 {
+            return Err(anyhow!("Mismatched parentheses!"));
+        }
         let mut parser = AstFactory { tokens: private_tokens, current: 0 };
-        let node = parser.parse_term();
-        node
+        let node = parser.parse_term()?;
+        Ok(node)
     }
     fn parse_number(&mut self) -> Result<Node> {
         println!("parse_number: {}", self.tokens[self.current].symbol);
-        self.current += 1;
-        match self.tokens[self.current].symbol {
-            LexicalSymbol::Number(x) => return Ok(Node::Number(x)),
-            _ => Err(anyhow!("The token {} could not be parsed!", self.tokens[self.current].symbol.clone()))
+        match &self.tokens[self.current].symbol {
+            LexicalSymbol::Number(x) => {
+                let number = *x; // Capture the number before incrementing
+                self.current += 1;
+                Ok(Node::Number(number))
+            },
+            _ => Err(anyhow!("The token {} could not be parsed as a number!", self.tokens[self.current].symbol.clone()))
         }
     }
 }
-
-
 
 fn to_operator(symbol: LexicalSymbol) -> Operator {
     match symbol {
@@ -140,7 +150,6 @@ fn to_operator(symbol: LexicalSymbol) -> Operator {
         _ => todo!()
     }
 }
-
 
 impl From<LexicalSequence> for AstFactory {
     fn from(value: LexicalSequence) -> AstFactory {
