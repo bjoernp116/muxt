@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use std::collections::VecDeque;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum LexicalSymbol {
     Varible(char),
     Plus,
@@ -14,13 +14,13 @@ pub enum LexicalSymbol {
     CloseParen,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LexicalExpression {
     pub symbol: LexicalSymbol,
     pub pos: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LexicalSequence(pub VecDeque<LexicalExpression>);
 
 pub fn analyze(input: String) -> anyhow::Result<LexicalSequence>{
@@ -28,6 +28,7 @@ pub fn analyze(input: String) -> anyhow::Result<LexicalSequence>{
     let mut out: VecDeque<LexicalExpression> = VecDeque::new();
 
     for (i, c) in input.chars().enumerate() {
+        println!("First: {}", c);
         if c.is_digit(10) {
             buffer.push(c);
         } else {
@@ -55,9 +56,19 @@ pub fn analyze(input: String) -> anyhow::Result<LexicalSequence>{
                 symbol,
                 pos: i,
             };
+            println!("Last: {}", c);
             out.push_back(expr);
         }
 
+    }
+
+    if buffer.len() != 0 {
+        let expr = LexicalExpression {
+            symbol: LexicalSymbol::Number(usize::from_str_radix(buffer.as_str(), 10).unwrap()),
+            pos: input.len()
+        };
+        out.push_back(expr);
+        buffer.clear();
     }
 
     Ok(LexicalSequence(out))

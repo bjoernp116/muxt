@@ -79,7 +79,7 @@ impl AstFactory {
 
     fn parse_factor(&mut self) -> Result<Node> {
         println!("parse_factor: {}", self.tokens[self.current].symbol);
-        let mut node: Node = self.parse_paren()?;
+        let mut node: Node = self.parse_primary()?;
         while self.current < self.tokens.len() {
             match self.tokens[self.current].symbol {
                 LexicalSymbol::Mult | LexicalSymbol::Div => {
@@ -88,13 +88,24 @@ impl AstFactory {
                     if self.current >= self.tokens.len() {
                         break;
                     }
-                    let right = Box::new(self.parse_paren()?);
+                    let right = Box::new(self.parse_primary()?);
                     node = Node::Binary { left: Box::new(node), operator: to_operator(op), right };
                 }
                 _ => break
             }
         }
         Ok(node)
+    }
+
+    fn parse_primary(&mut self) -> Result<Node> {
+        if self.current >= self.tokens.len() {
+            return Err(anyhow!("Out of bounds access in parse_primary"));
+        }
+        println!("parse_primary: {}", self.tokens[self.current].symbol);
+        match self.tokens[self.current].symbol {
+            LexicalSymbol::OpenParen => self.parse_paren(),
+            _ => self.parse_number()
+        }
     }
 
     fn parse_paren(&mut self) -> Result<Node> {
@@ -128,7 +139,11 @@ impl AstFactory {
         let node = parser.parse_term()?;
         Ok(node)
     }
+
     fn parse_number(&mut self) -> Result<Node> {
+        if self.current >= self.tokens.len() {
+            return Err(anyhow!("Out of bounds access in parse_number"));
+        }
         println!("parse_number: {}", self.tokens[self.current].symbol);
         match &self.tokens[self.current].symbol {
             LexicalSymbol::Number(x) => {
