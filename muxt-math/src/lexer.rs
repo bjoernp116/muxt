@@ -9,7 +9,7 @@ pub enum LexicalSymbol {
     Div,
     Mult,
     Pow,
-    Eqal,
+    Equal,
     Number(usize),
     OpenParen,
     CloseParen,
@@ -49,7 +49,7 @@ pub fn analyze(input: String) -> anyhow::Result<LexicalSequence>{
                 '(' => LexicalSymbol::OpenParen,
                 ')' => LexicalSymbol::CloseParen,
                 '^' => LexicalSymbol::Pow,
-                '=' => LexicalSymbol::Eqal,
+                '=' => LexicalSymbol::Equal,
                 ' ' => continue,
                 x if x.is_alphabetic() => LexicalSymbol::Varible(x),
                 _ => { return Err(anyhow!("Unexpected symbol: {}", c)); }

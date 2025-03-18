@@ -1,12 +1,13 @@
 mod lexer;
 mod expression;
 mod parser;
+mod interpreter;
 
 
 
 #[cfg(test)]
 mod tests {
-    use crate::{lexer::LexicalSequence, parser::AstFactory};
+    use crate::{interpreter::Interpreter, lexer::LexicalSequence, parser::{AstFactory, AST}};
 
     use super::*;
 
@@ -22,7 +23,7 @@ mod tests {
 
     #[test]
     fn ast() {
-        let input = String::from("3 ^ 2 + 5 * (4 + 2) * 3");
+        let input = String::from("3 ^ 2 + 5 * (4 + x) * 3");
         let result: LexicalSequence = lexer::analyze(input).unwrap();
 
         println!("Lexer output: {:#?}", result);
@@ -31,5 +32,30 @@ mod tests {
 
         let tree = parser.parse_term();
         println!("{:#?}", tree);
+    }
+
+    #[test]
+    fn interpreter_expr() {
+        let input = String::from("3 ^ 2 + 5 * (4 + 5) * 3");
+        let result: LexicalSequence = lexer::analyze(input).unwrap();
+
+        let mut parser: AstFactory = result.into();
+        let ast: AST = parser.parse().unwrap();
+        println!("{:#?}", ast.clone());
+
+        let interpreter = Interpreter { ast };
+        println!("Output: {}", interpreter.evaluate().unwrap());
+    }
+
+    #[test]
+    fn interpreter_expr_var() {
+        let input = String::from("3 ^ 2 + 5 * (x + 5) * 3");
+        let result: LexicalSequence = lexer::analyze(input).unwrap();
+
+        let mut parser: AstFactory = result.into();
+        let ast: AST = parser.parse().unwrap();
+        println!("{:#?}", ast.clone());
+
+        let interpreter = Interpreter { ast };
     }
 }

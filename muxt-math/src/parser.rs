@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 
 type Result<T> = anyhow::Result<T>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Node {
     Number(usize),
     Binary {
@@ -13,29 +13,76 @@ pub enum Node {
         operator: Operator,
         right: Box<Node>
     },
-    Unary {
-        child: Box<Node>,
-        operator: Operator
-    }
+    Variable(char),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Operator {
     Plus,
     Minus,
     Div,
     Mult,
-    Pow
+    Pow,
+    Equal,
+}
+
+impl Operator {
+    pub fn eval(&self, left: i32, right: i32) -> Result<i32> {
+        use Operator::*;
+        match self {
+            Plus => Ok(left + right),
+            Minus => Ok(left - right),
+            Mult => Ok(left * right),
+            Div => Ok(left / right),
+            Pow => Ok(left.pow(right as u32)),
+            Equal => Err(anyhow!("Cant evaluate equals sign!")),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AST {
+    pub head: Node,
+    pub vars: usize,
+    pub equals: bool,
 }
 
 pub struct AstFactory {
     tokens: VecDeque<LexicalExpression>,
     current: usize,
+    vars: usize,
+    equals: bool,
 }
 
 impl AstFactory {
+    pub fn parse(&mut self) -> Result<AST> {
+        Ok(AST {
+            head: self.parse_term()?,
+            vars: self.vars,
+            equals: self.equals,
+        })
+    }
+
+    pub fn parse_assignment(&mut self) -> Result<Node> {
+        let mut node: Node = self.parse_term()?;
+        while self.current < self.tokens.len() {
+            match self.tokens[self.current].symbol {
+                LexicalSymbol::Equal => {
+                    let op = self.tokens[self.current].symbol.clone();
+                    self.current += 1; // Increment here after capturing the operator
+                    if self.current >= self.tokens.len() {
+                        break;
+                    }
+                    let right = Box::new(self.parse_term()?);
+                    node = Node::Binary { left: Box::new(node), operator: to_operator(op), right };
+                }
+                _ => break
+            }
+        }
+        Ok(node)
+    }
+
     pub fn parse_term(&mut self) -> Result<Node> {
-        println!("parse_term: {}", self.tokens[self.current].symbol);
         let mut node: Node = self.parse_factor()?;
         while self.current < self.tokens.len() {
             match self.tokens[self.current].symbol {
@@ -55,7 +102,6 @@ impl AstFactory {
     }
 
     fn parse_factor(&mut self) -> Result<Node> {
-        println!("parse_factor: {}", self.tokens[self.current].symbol);
         let mut node: Node = self.parse_exponent()?;
         while self.current < self.tokens.len() {
             match self.tokens[self.current].symbol {
@@ -75,7 +121,6 @@ impl AstFactory {
     }
 
     fn parse_exponent(&mut self) -> Result<Node> {
-        println!("parse_exponent: {}", self.tokens[self.current].symbol);
         let mut node: Node = self.parse_primary()?;
         while self.current < self.tokens.len() {
             match self.tokens[self.current].symbol {
@@ -98,7 +143,6 @@ impl AstFactory {
         if self.current >= self.tokens.len() {
             return Err(anyhow!("Out of bounds access in parse_primary"));
         }
-        println!("parse_primary: {}", self.tokens[self.current].symbol);
         match self.tokens[self.current].symbol {
             LexicalSymbol::OpenParen => self.parse_paren(),
             _ => self.parse_number()
@@ -106,7 +150,6 @@ impl AstFactory {
     }
 
     fn parse_paren(&mut self) -> Result<Node> {
-        println!("parse_paren: {}", self.tokens[self.current].symbol);
         let mut open_p = 0;
         let mut private_tokens: VecDeque<LexicalExpression> = VecDeque::new();
 
@@ -132,7 +175,12 @@ impl AstFactory {
         if open_p != 0 {
             return Err(anyhow!("Mismatched parentheses!"));
         }
-        let mut parser = AstFactory { tokens: private_tokens, current: 0 };
+        let mut parser = AstFactory {
+            tokens: private_tokens,
+            current: 0,
+            vars: self.vars,
+            equals: self.equals
+        };
         let node = parser.parse_term()?;
         Ok(node)
     }
@@ -141,12 +189,16 @@ impl AstFactory {
         if self.current >= self.tokens.len() {
             return Err(anyhow!("Out of bounds access in parse_number"));
         }
-        println!("parse_number: {}", self.tokens[self.current].symbol);
         match &self.tokens[self.current].symbol {
             LexicalSymbol::Number(x) => {
                 let number = *x; // Capture the number before incrementing
                 self.current += 1;
                 Ok(Node::Number(number))
+            },
+            LexicalSymbol::Varible(x) => {
+                let ch = *x;
+                self.current += 1;
+                Ok(Node::Variable(ch))
             },
             _ => Err(anyhow!("The token {} could not be parsed as a number!", self.tokens[self.current].symbol.clone()))
         }
@@ -169,6 +221,21 @@ impl From<LexicalSequence> for AstFactory {
         AstFactory {
             tokens: value.0,
             current: 0,
+            equals: false,
+            vars: 0,
+        }
+    }
+}
+
+impl std::fmt::Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operator::Plus => write!(f, "+"),
+            Operator::Minus => write!(f, "-"),
+            Operator::Mult => write!(f, "*"),
+            Operator::Div => write!(f, "/"),
+            Operator::Pow => write!(f, "^"),
+            Operator::Equal => write!(f, "="),
         }
     }
 }
