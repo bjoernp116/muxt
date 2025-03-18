@@ -15,6 +15,7 @@ pub enum LexicalSymbol {
     CloseParen,
 }
 
+
 #[derive(Clone, Debug)]
 pub struct LexicalExpression {
     pub symbol: LexicalSymbol,
@@ -29,7 +30,6 @@ pub fn analyze(input: String) -> anyhow::Result<LexicalSequence>{
     let mut out: VecDeque<LexicalExpression> = VecDeque::new();
 
     for (i, c) in input.chars().enumerate() {
-        println!("First: {}", c);
         if c.is_digit(10) {
             buffer.push(c);
         } else {
@@ -58,7 +58,6 @@ pub fn analyze(input: String) -> anyhow::Result<LexicalSequence>{
                 symbol,
                 pos: i,
             };
-            println!("Last: {}", c);
             out.push_back(expr);
         }
 

@@ -22,10 +22,10 @@ pub enum Node {
 
 #[derive(Debug, Clone)]
 pub enum Operator {
-    Plus,
-    Minus,
+    Add,
+    Sub,
     Div,
-    Mult,
+    Mul,
     Pow,
 }
 
@@ -33,11 +33,21 @@ impl Operator {
     pub fn eval(&self, left: f32, right: f32) -> Result<f32> {
         use Operator::*;
         match self {
-            Plus => Ok(left + right),
-            Minus => Ok(left - right),
-            Mult => Ok(left * right),
+            Add => Ok(left + right),
+            Sub => Ok(left - right),
+            Mul => Ok(left * right),
             Div => Ok(left / right),
             Pow => Ok(left.powf(right)),
+        }
+    }
+    pub fn inverse(&self) -> Operator {
+        use Operator::*;
+        match self {
+            Add => Sub,
+            Sub => Add,
+            Mul => Div,
+            Div => Mul,
+            Pow => todo!("Logarithms not implemented!")
         }
     }
 }
@@ -206,10 +216,10 @@ impl AstFactory {
 
 fn to_operator(symbol: LexicalSymbol) -> Operator {
     match symbol {
-        LexicalSymbol::Plus => Operator::Plus,
-        LexicalSymbol::Minus => Operator::Minus,
+        LexicalSymbol::Plus => Operator::Add,
+        LexicalSymbol::Minus => Operator::Sub,
         LexicalSymbol::Div => Operator::Div,
-        LexicalSymbol::Mult => Operator::Mult,
+        LexicalSymbol::Mult => Operator::Mul,
         LexicalSymbol::Pow => Operator::Pow,
         _ => todo!()
     }
@@ -229,11 +239,22 @@ impl From<LexicalSequence> for AstFactory {
 impl std::fmt::Display for Operator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Operator::Plus => write!(f, "+"),
-            Operator::Minus => write!(f, "-"),
-            Operator::Mult => write!(f, "*"),
+            Operator::Add => write!(f, "+"),
+            Operator::Sub => write!(f, "-"),
+            Operator::Mul => write!(f, "*"),
             Operator::Div => write!(f, "/"),
             Operator::Pow => write!(f, "^"),
+        }
+    }
+}
+
+impl std::fmt::Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Node::Number(x) => write!(f, "{}", x),
+            Node::Binary { left, operator, right } => write!(f, "({} {} {})", left, operator, right),
+            Node::Variable(ch) => write!(f, "{}", ch),
+            Node::Equation { left, right } => write!(f, "{} = {}", left, right),
         }
     }
 }
