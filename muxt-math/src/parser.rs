@@ -7,13 +7,17 @@ type Result<T> = anyhow::Result<T>;
 
 #[derive(Debug, Clone)]
 pub enum Node {
-    Number(usize),
+    Number(f32),
     Binary {
         left: Box<Node>,
         operator: Operator,
         right: Box<Node>
     },
     Variable(char),
+    Equation {
+        left: Box<Node>,
+        right: Box<Node>,
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -23,19 +27,17 @@ pub enum Operator {
     Div,
     Mult,
     Pow,
-    Equal,
 }
 
 impl Operator {
-    pub fn eval(&self, left: i32, right: i32) -> Result<i32> {
+    pub fn eval(&self, left: f32, right: f32) -> Result<f32> {
         use Operator::*;
         match self {
             Plus => Ok(left + right),
             Minus => Ok(left - right),
             Mult => Ok(left * right),
             Div => Ok(left / right),
-            Pow => Ok(left.pow(right as u32)),
-            Equal => Err(anyhow!("Cant evaluate equals sign!")),
+            Pow => Ok(left.powf(right)),
         }
     }
 }
@@ -57,29 +59,26 @@ pub struct AstFactory {
 impl AstFactory {
     pub fn parse(&mut self) -> Result<AST> {
         Ok(AST {
-            head: self.parse_term()?,
+            head: self.parse_assignment()?,
             vars: self.vars,
             equals: self.equals,
         })
     }
 
     pub fn parse_assignment(&mut self) -> Result<Node> {
-        let mut node: Node = self.parse_term()?;
-        while self.current < self.tokens.len() {
-            match self.tokens[self.current].symbol {
-                LexicalSymbol::Equal => {
-                    let op = self.tokens[self.current].symbol.clone();
-                    self.current += 1; // Increment here after capturing the operator
-                    if self.current >= self.tokens.len() {
-                        break;
-                    }
-                    let right = Box::new(self.parse_term()?);
-                    node = Node::Binary { left: Box::new(node), operator: to_operator(op), right };
-                }
-                _ => break
+        let left = self.parse_term()?;
+        if self.current < self.tokens.len() {
+            if let LexicalSymbol::Equal = self.tokens[self.current].symbol {
+                self.current += 1;
+                self.equals = true;
+                let right = self.parse_term()?;
+                return Ok(Node::Equation {
+                    left: Box::new(left),
+                    right: Box::new(right),
+                });
             }
         }
-        Ok(node)
+        Ok(left)
     }
 
     pub fn parse_term(&mut self) -> Result<Node> {
@@ -154,7 +153,7 @@ impl AstFactory {
         let mut private_tokens: VecDeque<LexicalExpression> = VecDeque::new();
 
         if self.tokens.len() == 0 {
-            return Ok(Node::Number(0));
+            return Ok(Node::Number(0.));
         }
         match self.tokens[self.current].symbol {
             LexicalSymbol::OpenParen => {},
@@ -193,7 +192,7 @@ impl AstFactory {
             LexicalSymbol::Number(x) => {
                 let number = *x; // Capture the number before incrementing
                 self.current += 1;
-                Ok(Node::Number(number))
+                Ok(Node::Number(number as f32))
             },
             LexicalSymbol::Varible(x) => {
                 let ch = *x;
@@ -235,7 +234,6 @@ impl std::fmt::Display for Operator {
             Operator::Mult => write!(f, "*"),
             Operator::Div => write!(f, "/"),
             Operator::Pow => write!(f, "^"),
-            Operator::Equal => write!(f, "="),
         }
     }
 }

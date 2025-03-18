@@ -44,12 +44,12 @@ mod tests {
         println!("{:#?}", ast.clone());
 
         let interpreter = Interpreter { ast };
-        println!("Output: {}", interpreter.evaluate().unwrap());
+        println!("Output: {:#?}", interpreter.evaluate().unwrap());
     }
 
     #[test]
-    fn interpreter_expr_var() {
-        let input = String::from("3 ^ 2 + 5 * (x + 5) * 3");
+    fn simplify() {
+        let input = String::from("4 * 2 / (3 + x) = (4 * 3) / 2");
         let result: LexicalSequence = lexer::analyze(input).unwrap();
 
         let mut parser: AstFactory = result.into();
@@ -57,5 +57,6 @@ mod tests {
         println!("{:#?}", ast.clone());
 
         let interpreter = Interpreter { ast };
+        println!("Output: {:#?}", interpreter.evaluate().unwrap());
     }
 }
